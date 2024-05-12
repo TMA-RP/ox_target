@@ -1,16 +1,26 @@
 local state = {}
 
 local isActive = false
+local isMenuOpen = false
 
 ---@return boolean
 function state.isActive()
     return isActive
 end
 
+---@return boolean
+function state.isMenuOpen()
+    return isMenuOpen
+end
+
+function state.setMenuOpen(value)
+    isMenuOpen = value
+end
+
 ---@param value boolean
 function state.setActive(value)
     isActive = value
-
+    state.setNuiFocus(value, value)
     if value then
         SendNuiMessage('{"event": "visible", "state": true}')
     end

@@ -126,7 +126,7 @@ local function shouldHide(option, distance, endCoords, entityHit, entityType, en
 end
 
 local function startTargeting()
-    if state.isDisabled() or state.isActive() or IsNuiFocused() or IsPauseMenuActive() then return end
+    if state.isDisabled() or state.isActive() or IsNuiFocused() or IsPauseMenuActive() or cache.vehicle then return end
 
     state.setActive(true)
 
@@ -154,17 +154,8 @@ local function startTargeting()
             DisableControlAction(0, 140, true)
             DisableControlAction(0, 141, true)
             DisableControlAction(0, 142, true)
-
-            if state.isNuiFocused() then
-                DisableControlAction(0, 1, true)
-                DisableControlAction(0, 2, true)
-
-                if not hasTarget or options and IsDisabledControlJustPressed(0, 25) then
-                    state.setNuiFocus(false, false)
-                end
-            elseif hasTarget and IsDisabledControlJustPressed(0, mouseButton) then
-                state.setNuiFocus(true, true)
-            end
+            DisableControlAction(0, 1, true)
+            DisableControlAction(0, 2, true)
 
             Wait(0)
         end
@@ -179,27 +170,14 @@ local function startTargeting()
         end
 
         local playerCoords = GetEntityCoords(cache.ped)
-        hit, entityHit, endCoords = lib.raycast.fromCamera(flag, 4, 20)
+        if not state.isMenuOpen() then
+            hit, entityHit, endCoords = utils.raycastFromCamera(flag)
+        end
         distance = #(playerCoords - endCoords)
 
         if entityHit ~= 0 and entityHit ~= lastEntity then
             local success, result = pcall(GetEntityType, entityHit)
             entityType = success and result or 0
-        end
-
-        if entityType == 0 then
-            local _flag = flag == 511 and 26 or 511
-            local _hit, _entityHit, _endCoords = lib.raycast.fromCamera(_flag, 4, 20)
-            local _distance = #(playerCoords - _endCoords)
-
-            if _distance < distance then
-                flag, hit, entityHit, endCoords, distance = _flag, _hit, _entityHit, _endCoords, _distance
-
-                if entityHit ~= 0 then
-                    local success, result = pcall(GetEntityType, entityHit)
-                    entityType = success and result or 0
-                end
-            end
         end
 
         if not hit and hasTarget and hasTarget > 1 then
@@ -338,6 +316,7 @@ local function startTargeting()
 
     state.setNuiFocus(false)
     SendNuiMessage('{"event": "visible", "state": false}')
+    state.setMenuOpen(false)
     table.wipe(currentTarget)
     options:wipe()
 
@@ -401,6 +380,11 @@ local function getResponse(option, server)
     return response
 end
 
+RegisterNUICallback('hasMenuOpen', function(data, cb)
+    cb(1)
+    state.setMenuOpen(data.value)
+end)
+
 RegisterNUICallback('select', function(data, cb)
     cb(1)
 
@@ -426,7 +410,7 @@ RegisterNUICallback('select', function(data, cb)
 
             currentMenu = option.openMenu ~= 'home' and option.openMenu or nil
         else
-            state.setNuiFocus(false)
+            -- state.setNuiFocus(false)
         end
 
         if option.onSelect then

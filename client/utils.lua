@@ -1,7 +1,13 @@
 local utils = {}
 
-local GetWorldCoordFromScreenCoord = GetWorldCoordFromScreenCoord
-local StartShapeTestLosProbe = StartShapeTestLosProbe
+local GetControlNormal = GetControlNormal
+local GetGameplayCamCoord = GetGameplayCamCoord
+local GetGameplayCamRot = GetGameplayCamRot
+local GetGameplayCamFov = GetGameplayCamFov
+local CreateCamWithParams = CreateCamWithParams
+local GetCamMatrix = GetCamMatrix
+local DestroyCam = DestroyCam
+local StartExpensiveSynchronousShapeTestLosProbe = StartExpensiveSynchronousShapeTestLosProbe
 local GetShapeTestResultIncludingMaterial = GetShapeTestResultIncludingMaterial
 
 ---@param flag number
@@ -11,10 +17,24 @@ local GetShapeTestResultIncludingMaterial = GetShapeTestResultIncludingMaterial
 ---@return vector3 surfaceNormal
 ---@return number materialHash
 function utils.raycastFromCamera(flag)
-    local coords, normal = GetWorldCoordFromScreenCoord(0.5, 0.5)
-    local destination = coords + normal * 10
-    local handle = StartShapeTestLosProbe(coords.x, coords.y, coords.z, destination.x, destination.y, destination.z,
-        flag, cache.ped, 4)
+    local screenPosition = { x = GetControlNormal(0, 239), y = GetControlNormal(0, 240) }
+    local pos = GetGameplayCamCoord()
+    local rot = GetGameplayCamRot(0)
+    local fov = GetGameplayCamFov()
+    local cam = CreateCamWithParams("DEFAULT_SCRIPTED_CAMERA", pos.x, pos.y, pos.z, rot.x, rot.y, rot.z, fov, 0, 2)
+    local camRight, camForward, camUp, camPos = GetCamMatrix(cam)
+
+    DestroyCam(cam, true)
+
+    screenPosition = vec2(screenPosition.x - 0.5, screenPosition.y - 0.5) * 2.0
+
+    local fovRadians = (fov * 3.14) / 180.0
+    local to = camPos + camForward + (camRight * screenPosition.x * fovRadians * GetAspectRatio(false) * 0.534375) - (camUp * screenPosition.y * fovRadians * 0.534375)
+
+    local direction = (to - camPos) * 10
+    local endPoint = camPos + direction
+
+    local handle = StartExpensiveSynchronousShapeTestLosProbe(camPos.x, camPos.y, camPos.z, endPoint.x, endPoint.y, endPoint.z, flag, cache.ped, 4)
 
     while true do
         Wait(0)
