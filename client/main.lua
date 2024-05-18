@@ -17,7 +17,6 @@ local GetEntityType = GetEntityType
 local HasEntityClearLosToEntity = HasEntityClearLosToEntity
 local GetEntityBoneIndexByName = GetEntityBoneIndexByName
 local GetEntityBonePosition_2 = GetEntityBonePosition_2
-local next = next
 local GetEntityModel = GetEntityModel
 local IsDisabledControlJustPressed = IsDisabledControlJustPressed
 local DisableControlAction = DisableControlAction
@@ -26,6 +25,7 @@ local GetModelDimensions = GetModelDimensions
 local GetOffsetFromEntityInWorldCoords = GetOffsetFromEntityInWorldCoords
 local currentTarget = {}
 local currentMenu
+local menuChanged
 local menuHistory = {}
 local nearbyZones
 
@@ -197,7 +197,7 @@ local function startTargeting()
         nearbyZones, zonesChanged = utils.getNearbyZones(endCoords)
 
         local entityChanged = entityHit ~= lastEntity
-        local newOptions = (zonesChanged or entityChanged) and true
+        local newOptions = (zonesChanged or entityChanged or menuChanged) and true
 
         if entityHit > 0 and entityChanged then
             currentMenu = nil
@@ -292,7 +292,7 @@ local function startTargeting()
                     hasTarget = false
                     SendNuiMessage('{"event": "leftTarget"}')
                 end
-            elseif hasTarget ~= 1 and hidden ~= totalOptions then
+            elseif menuChanged or hasTarget ~= 1 and hidden ~= totalOptions then
                 hasTarget = options.size
 
                 if currentMenu then
@@ -313,6 +313,8 @@ local function startTargeting()
                     zones = zones,
                 }, { sort_keys = true }))
             end
+
+            menuChanged = false
         end
 
         if toggleHotkey and IsPauseMenuActive() then
@@ -424,7 +426,10 @@ RegisterNUICallback('select', function(data, cb)
                 menuHistory[menuDepth + 1] = currentMenu
             end
 
+            menuChanged = true
             currentMenu = option.openMenu ~= 'home' and option.openMenu or nil
+
+            options:wipe()
         else
             -- state.setNuiFocus(false)
         end
